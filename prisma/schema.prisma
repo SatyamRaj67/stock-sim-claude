@@ -1,0 +1,82 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Stock {
+  id                 String       @id @default(uuid())
+  symbol             String       @unique
+  name               String
+  currentPrice       Decimal
+  previousPrice      Decimal
+  dayHigh            Decimal
+  dayLow             Decimal
+  dayOpen            Float
+  volume             Int          @default(0)
+  marketCap          Float
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  isActive           Boolean      @default(true)
+  priceHistory       PricePoint[]
+  userStocks         UserStock[]
+  randomUpdateActive Boolean      @default(true)
+  jumpProbability    Float        @default(0.005) // 0.5% chance of jump by default
+  jumpMultiplierMax  Float        @default(10.0) // Maximum jump multiplier (10x)
+  jumpMultiplierMin  Float        @default(0.1) // Minimum jump multiplier (0.1x)
+
+  @@index([symbol])
+}
+
+model PricePoint {
+  id        String   @id @default(uuid())
+  price     Float
+  timestamp DateTime @default(now())
+  stockId   String
+  stock     Stock    @relation(fields: [stockId], references: [id])
+}
+
+model User {
+  id        String      @id @default(uuid())
+  email     String      @unique
+  password  String
+  name      String
+  balance   Float       @default(10000.00)
+  isAdmin   Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  stocks    UserStock[]
+  trades    Trade[]
+}
+
+model UserStock {
+  id        String   @id @default(uuid())
+  userId    String
+  stockId   String
+  quantity  Int
+  avgPrice  Float
+  user      User     @relation(fields: [userId], references: [id])
+  stock     Stock    @relation(fields: [stockId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, stockId])
+  @@index([userId])
+}
+
+model Trade {
+  id        String   @id @default(uuid())
+  userId    String
+  stockId   String
+  quantity  Int
+  price     Float
+  type      String // "BUY" or "SELL"
+  timestamp DateTime @default(now())
+  status    String   @default("Completed") // Options: PENDING, COMPLETED, CANCELED
+  user      User     @relation(fields: [userId], references: [id])
+}
