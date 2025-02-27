@@ -1,4 +1,5 @@
 import { PrismaClient, PricePoint } from '@prisma/client';
+import { startOfDay, startOfWeek, startOfMonth, format } from 'date-fns';
 
 const prisma = new PrismaClient();
 
@@ -36,7 +37,7 @@ export async function generateCandlestickData(
   const groupedPoints = groupPricePointsByTimeframe(pricePoints, timeframe);
   
   // Convert each group into a candlestick data point
-  for (const [periodKey, points] of Object.entries(groupedPoints)) {
+  for (const [, points] of Object.entries(groupedPoints)) {
     if (points.length > 0) {
       const periodDate = new Date(points[0].timestamp);
       const open = points[0].price;
@@ -67,37 +68,34 @@ export async function generateCandlestickData(
 }
 
 function groupPricePointsByTimeframe(
-  pricePoints: PricePoint[], 
+  pricePoints: PricePoint[],
   timeframe: 'daily' | 'weekly' | 'monthly'
 ): Record<string, PricePoint[]> {
-  const groupedPoints: Record<string, PricePoint[]> = {};
-  
-  for (const point of pricePoints) {
-    const date = new Date(point.timestamp);
-    let key: string;
+  const grouped: Record<string, PricePoint[]> = {};
+
+  pricePoints.forEach(point => {
+    let periodStart: Date;
     
-    if (timeframe === 'daily') {
-      // Format: YYYY-MM-DD
-      key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-    } else if (timeframe === 'weekly') {
-      // Get the week number
-      const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-      const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
-      const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-      
-      // Format: YYYY-WW
-      key = `${date.getFullYear()}-W${weekNumber.toString().padStart(2, '0')}`;
-    } else { // monthly
-      // Format: YYYY-MM
-      key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+    switch (timeframe) {
+      case 'daily':
+        periodStart = startOfDay(point.timestamp);
+        break;
+      case 'weekly':
+        periodStart = startOfWeek(point.timestamp);
+        break;
+      case 'monthly':
+        periodStart = startOfMonth(point.timestamp);
+        break;
+    }
+
+    const key = format(periodStart, 'yyyy-MM-dd');
+    
+    if (!grouped[key]) {
+      grouped[key] = [];
     }
     
-    if (!groupedPoints[key]) {
-      groupedPoints[key] = [];
-    }
-    
-    groupedPoints[key].push(point);
-  }
-  
-  return groupedPoints;
+    grouped[key].push(point);
+  });
+
+  return grouped;
 }

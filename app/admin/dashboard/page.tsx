@@ -23,5 +23,5 @@ async function getStocksData() {
 }
 
 export default async function AdminDashboardPage() {
-    
+        
 }

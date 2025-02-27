@@ -134,4 +134,73 @@ export default async function StockDetailPage({ params }: { params: { symbol: st
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Volume</dt>
-                <dd className="text-lg">{
+                <dd className="text-lg">{stock.volume.toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Market Cap</dt>
+                <dd className="text-lg">${(Number(stock.currentPrice) * stock.outstandingShares).toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">52-Week High</dt>
+                <dd className="text-lg">${Number(stock.yearHigh).toFixed(2)}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">52-Week Low</dt>
+                <dd className="text-lg">${Number(stock.yearLow).toFixed(2)}</dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <h2 className="text-xl font-semibold mb-4">Trade {stock.symbol}</h2>
+            <TradeForm 
+              stockId={stock.id} 
+              stockSymbol={stock.symbol} 
+              currentPrice={Number(stock.currentPrice)} 
+            />
+          </CardContent>
+        </Card>
+      </div>
+      
+      <div className="mt-8">
+        <Card>
+          <CardContent className="pt-6">
+            <h2 className="text-xl font-semibold mb-4">About {stock.name}</h2>
+            <p className="text-gray-700">{stock.description || "No company description available."}</p>
+            
+            <div className="mt-6 grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-lg font-medium mb-2">Industry</h3>
+                <p>{stock.industry || "N/A"}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium mb-2">Sector</h3>
+                <p>{stock.sector || "N/A"}</p>
+              </div>
+            </div>
+            
+            <div className="mt-6">
+              <h3 className="text-lg font-medium mb-2">Key Financial Metrics</h3>
+              <dl className="grid grid-cols-3 gap-4">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">P/E Ratio</dt>
+                  <dd className="text-lg">{stock.peRatio?.toFixed(2) || "N/A"}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Dividend Yield</dt>
+                  <dd className="text-lg">{stock.dividendYield ? `${(stock.dividendYield * 100).toFixed(2)}%` : "N/A"}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">EPS</dt>
+                  <dd className="text-lg">${stock.eps?.toFixed(2) || "N/A"}</dd>
+                </div>
+              </dl>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
