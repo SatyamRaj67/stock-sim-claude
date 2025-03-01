@@ -1,72 +1,39 @@
-import { Server as HttpServer } from 'http';
-import { Server as SocketServer } from 'socket.io';
-import { PriceSimulator } from './price-simulator';
+import { Server as NetServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import { initializePriceSimulator } from './price-simulator';
 
-let io: SocketServer | null = null;
-let priceSimulator: PriceSimulator | null = null;
+let io: SocketIOServer | null = null;
 
-export const initializeSocketServer = (httpServer: HttpServer) => {
-  if (!io) {
-    io = new SocketServer(httpServer, {
-      cors: {
-        origin: process.env.NEXTAUTH_URL || 'http://localhost:3000',
-        methods: ['GET', 'POST']
-      }
-    });
-    
-    io.on('connection', (socket) => {
-      console.log('Client connected:', socket.id);
-      
-      // Admin events
-      socket.on('toggle-stock-updates', ({ stockId, active }) => {
-        if (priceSimulator) {
-          priceSimulator.toggleStockUpdates(stockId, active);
-          io?.emit('stock-update-status', { stockId, active });
-        }
-      });
-      
-      socket.on('update-stock-settings', ({ stockId, settings }) => {
-        if (priceSimulator) {
-          priceSimulator.updateStockSettings(stockId, settings);
-          io?.emit('stock-settings-updated', { stockId, settings });
-        }
-      });
-      
-      socket.on('create-stock', async (stockData) => {
-        // Implementation to create a new stock
-        // Emit event after creation
-        io?.emit('stock-created', stockData);
-      });
-      
-      socket.on('delete-stock', async (stockId) => {
-        // Implementation to delete a stock
-        // Emit event after deletion
-        io?.emit('stock-deleted', { stockId });
-      });
-      
-      socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-      });
-    });
-    
-    // Initialize price simulator
-    priceSimulator = new PriceSimulator(io);
-    priceSimulator.initialize();
-  }
-  
+export function getSocketServer() {
   return io;
-};
+}
 
-export const getSocketServer = () => {
-  if (!io) {
-    throw new Error('Socket.io server not initialized');
+export function initializeSocket(server: NetServer) {
+  if (io) {
+    console.log('Socket server already initialized');
+    return io;
   }
+
+  io = new SocketIOServer(server, {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST']
+    }
+  });
+
+  console.log('Socket server initialized');
+
+  // Initialize the price simulator with the socket server
+  const simulator = initializePriceSimulator(io);
+
+  // Clean up on server close
+  server.on('close', () => {
+    if (simulator.stopSimulator) {
+      simulator.stopSimulator();
+    }
+    io = null;
+    console.log('Socket server closed');
+  });
+
   return io;
-};
-
-export const getPriceSimulator = () => {
-  if (!priceSimulator) {
-    throw new Error('Price simulator not initialized');
-  }
-  return priceSimulator;
-};
+}

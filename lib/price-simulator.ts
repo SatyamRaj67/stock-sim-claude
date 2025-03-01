@@ -1,5 +1,5 @@
 import { PrismaClient, Stock } from "@prisma/client";
-import { Server as SocketServer } from "socket.io";
+import { Server as SocketServer, Server as SocketIOServer } from "socket.io";
 
 const prisma = new PrismaClient();
 
@@ -137,4 +137,67 @@ export class PriceSimulator {
     // Emit updated stock data via socket.io
     this.io.emit("stock-update", updatedStock);
   }
+
+  // Basic implementation that can be expanded if needed
+  static initialize(io: SocketIOServer) {
+    return initializePriceSimulator(io);
+  }
+}
+
+// Sample stock data
+interface StockData {
+  symbol: string;
+  name: string;
+  price: number;
+  previousClose: number;
+}
+
+let stocks: StockData[] = [
+  { symbol: 'AAPL', name: 'Apple Inc.', price: 175.43, previousClose: 174.50 },
+  { symbol: 'MSFT', name: 'Microsoft Corp.', price: 325.76, previousClose: 324.90 },
+  { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 135.60, previousClose: 134.75 },
+  { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 145.20, previousClose: 146.30 },
+  { symbol: 'TSLA', name: 'Tesla Inc.', price: 195.50, previousClose: 193.80 },
+];
+
+// Simulate random price movements
+function updatePrices() {
+  return stocks.map(stock => {
+    // Random price movement between -1.5% and +1.5%
+    const changePercent = (Math.random() - 0.5) * 0.03;
+    const newPrice = stock.price * (1 + changePercent);
+    return {
+      ...stock,
+      price: parseFloat(newPrice.toFixed(2))
+    };
+  });
+}
+
+// Initialize price simulator with socket.io instance
+export function initializePriceSimulator(io: SocketIOServer) {
+  console.log('Price simulator initialized');
+  
+  // Update prices every 5 seconds
+  const interval = setInterval(() => {
+    stocks = updatePrices();
+    io.emit('price-updates', stocks);
+  }, 5000);
+  
+  // Handle client connections
+  io.on('connection', (socket) => {
+    console.log('Client connected to price simulator');
+    
+    // Send initial data to client
+    socket.emit('price-updates', stocks);
+    
+    // Handle client disconnect
+    socket.on('disconnect', () => {
+      console.log('Client disconnected from price simulator');
+    });
+  });
+  
+  return {
+    getStocks: () => stocks,
+    stopSimulator: () => clearInterval(interval)
+  };
 }

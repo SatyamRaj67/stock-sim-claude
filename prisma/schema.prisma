@@ -9,74 +9,86 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Stock {
-  id                 String       @id @default(uuid())
-  symbol             String       @unique
-  name               String
-  currentPrice       Decimal
-  previousPrice      Decimal
-  dayHigh            Decimal
-  dayLow             Decimal
-  dayOpen            Float
-  volume             Int          @default(0)
-  marketCap          Float
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  isActive           Boolean      @default(true)
-  priceHistory       PricePoint[]
-  userStocks         UserStock[]
-  randomUpdateActive Boolean      @default(true)
-  jumpProbability    Float        @default(0.005) // 0.5% chance of jump by default
-  jumpMultiplierMax  Float        @default(10.0) // Maximum jump multiplier (10x)
-  jumpMultiplierMin  Float        @default(0.1) // Minimum jump multiplier (0.1x)
+model User {
+  id            String      @id @default(cuid())
+  name          String?
+  email         String      @unique
+  password      String
+  image         String?
+  balance       Float       @default(10000)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  isAdmin       Boolean     @default(false)
+  trades        Trade[]
+  stocks        UserStock[]
+}
 
-  @@index([symbol])
+model Stock {
+  id                  String       @id @default(cuid())
+  symbol              String       @unique
+  name                String
+  currentPrice        Float
+  previousPrice       Float
+  dayHigh             Float
+  dayLow              Float
+  dayOpen             Float
+  marketCap           Float
+  volume              Int
+  isActive            Boolean      @default(true)
+  randomUpdateActive  Boolean      @default(true)
+  jumpProbability     Float        @default(0.005)
+  jumpMultiplierMax   Float        @default(1.15)
+  jumpMultiplierMin   Float        @default(0.85)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  pricePoints         PricePoint[]
+  trades              Trade[]
+  users               UserStock[]
 }
 
 model PricePoint {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
+  stockId   String
+  stock     Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
   price     Float
   timestamp DateTime @default(now())
-  stockId   String
-  stock     Stock    @relation(fields: [stockId], references: [id])
-}
-
-model User {
-  id        String      @id @default(uuid())
-  email     String      @unique
-  password  String
-  name      String
-  balance   Float       @default(10000.00)
-  isAdmin   Boolean     @default(false)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  stocks    UserStock[]
-  trades    Trade[]
-}
-
-model UserStock {
-  id        String   @id @default(uuid())
-  userId    String
-  stockId   String
-  quantity  Int
-  avgPrice  Float
-  user      User     @relation(fields: [userId], references: [id])
-  stock     Stock    @relation(fields: [stockId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, stockId])
-  @@index([userId])
+  
+  @@index([stockId])
 }
 
 model Trade {
-  id        String   @id @default(uuid())
+  id        String    @id @default(cuid())
   userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   stockId   String
+  stock     Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  type      TradeType
   quantity  Int
   price     Float
-  type      String // "BUY" or "SELL"
-  timestamp DateTime @default(now())
-  status    String   @default("Completed") // Options: PENDING, COMPLETED, CANCELED
-  user      User     @relation(fields: [userId], references: [id])
+  total     Float
+  timestamp DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([stockId])
+}
+
+model UserStock {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stockId   String
+  stock     Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  quantity  Int
+  avgPrice  Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([userId, stockId])
+  @@index([userId])
+  @@index([stockId])
+}
+
+enum TradeType {
+  BUY
+  SELL
 }
